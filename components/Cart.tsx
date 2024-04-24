@@ -1,13 +1,17 @@
 "use client";
+import { useAppSelector } from "@/Redux/hooks";
 import { RxCross1 } from "react-icons/rx";
 import CartProduct from "./CartProduct";
 import { useEffect, useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
 import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/Redux/hooks";
+import { removeFromCart } from "@/Redux/features/cartSlice";
 import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { useProductHandler } from "@/hooks/productHandler";
+
+import { useProductHandler, useProductContext } from "@/hooks/productHandler";
 
 interface cartProps {
     setShowCart: (show: boolean) => void;
@@ -22,56 +26,13 @@ interface Product {
 }
 
 const PaypalCheckout: React.FC<{ products: Product[]}> = ({products}) => {
-  const router = useRouter();
-
-  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
-  const [data, setData] = useState<any>(null);
-
-  useEffect(() => {
-    if (data && data?.orderCreate && data?.orderCreate.links) {
-
-      console.log(data?.orderCreate.links)
-
-      const payerActionLink = data?.orderCreate.links.find((link: { rel: string; }) => link.rel === 'payer-action')
-      if (payerActionLink) {
-        window.location.href = payerActionLink.href;
-      }
-    }
-  }, [data])
-
-  const createOrders = async () => {
-    const response = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ products }),
-    });
-
-    if (!response.ok) {
-      // Handle error
-      console.error('Failed to create order');
-      return;
-    }
-
-    const data = await response.json();
-    setData(data); // set the data to state
-    console.log('Order created:', data);
-  };
-
-  return (
-    <Button
-      variant="outline"
-      onClick={createOrders}
-    >
-      Show Toast
-    </Button> 
-  )
+    // ...
 }
 
 const Cart: React.FC<cartProps> = ({setShowCart}) => {
     
-    const { products, dispatch } = useProductHandler();
+    const { dispatch } = useProductHandler();
+    const { products } = useProductContext();
 
     console.log(products)
 
@@ -91,14 +52,14 @@ const Cart: React.FC<cartProps> = ({setShowCart}) => {
       const savedProducts = localStorage.getItem('products');
       if (savedProducts) {
         const parsedProducts = JSON.parse(savedProducts);
-        const products = parsedProducts.map(({ id, img, name, price, quantity }: Product) => ({
+        const product = parsedProducts.map(({ id, img, name, price, quantity }: Product) => ({
           id,
           img,
           name,
           price,
           quantity,
         }));
-        dispatch({ type: 'load', payload: products });
+        dispatch({ type: 'load', payload: product });
       }
     }, [dispatch]);
   
@@ -112,12 +73,8 @@ const Cart: React.FC<cartProps> = ({setShowCart}) => {
         products.forEach((item: { price: number; quantity: number; }) => (total = total + item.price * item.quantity));
         return total;
     };
-    console.log(products);
-
     const itemTotal = getTotal()
     const shippingFee = itemTotal > 399 ? 0 : 160
-
-    console.log(products)
 
     return (
   <div className="bg-[#0000007d] w-full min-h-screen fixed left-0 top-0 cart-container">
@@ -126,6 +83,10 @@ const Cart: React.FC<cartProps> = ({setShowCart}) => {
         className="absolute right-0 top-0 m-6 text-[24px] cursor-pointer"
         onClick={() => setShowCart(false)}
       />
+      <h3 className="pt-6 text-lg font-medium text-gray-600 uppercase">
+      Carrito 
+      </h3>
+
       <div className="mt-6 space-y-2">
         {products?.map((item: Product) => (
           <CartProduct
@@ -138,6 +99,15 @@ const Cart: React.FC<cartProps> = ({setShowCart}) => {
           />
         ))}
       </div>
+
+      <div className="flex justify-between items-center font-medium text-x1 py-4">
+        <p>Total:</p>
+        <p>${getTotal()} + ${shippingFee} (Shipping)</p>
+      </div>
+
+      {showPaypal && <PaypalCheckout products={products}/>}
+      {!showPaypal && <p>Cart is lonelier than you</p>}
+      
     </div>
   </div>
 );

@@ -1,4 +1,6 @@
-import { useReducer, useEffect } from 'react';
+// hooks/useProductHandler.js
+
+import React, { useReducer, useContext, useEffect } from 'react';
 
 interface IProduct {
   id: number;
@@ -26,10 +28,8 @@ const reducer = (state: Array<IProduct>, action: Action) => {
       const product = action.payload;
       const existingProductIndex = state.findIndex(pro => pro.id === product.id);
       if (existingProductIndex === -1) {
-        // si el producto no está, añadelo
         return [...state, product];
       } else {
-        // si el producto ya está en el carro, aumenta la cantidad
         return state.map((item, index) => {
           if (index !== existingProductIndex) {
             return item;
@@ -75,4 +75,25 @@ useEffect(() => {
 }, [products]);
 
 return { products, dispatch };
+}
+
+const ProductContext = React.createContext<any>(null);
+
+export function useProductContext() {
+  return useContext(ProductContext)
+}
+
+export function ProductProvider({children}: any) {
+  const { products, dispatch } = useProductHandler(); // Type '{ products: IProduct[]; dispatch: Dispatch<Action>; }' is not an array type.
+
+  return (
+    <ProductContext.Provider value={{products, dispatch}}>
+      {children}
+    </ProductContext.Provider>
+  )
+
+}
+export function useProductSelector() {
+  const products = useProductContext();
+  return products;
 }
